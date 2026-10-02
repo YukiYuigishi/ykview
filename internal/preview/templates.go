@@ -235,7 +235,7 @@ var markdownTemplate = template.Must(template.New("markdown").Parse(`<!doctype h
     nav { margin-bottom: 1rem; overflow-wrap: anywhere; }
     nav a { text-decoration: none; }
     .toolbar { display: flex; gap: .8rem; margin-bottom: 1rem; }
-    #rendered, #source { overflow-x: auto; }
+    #rendered, #source, #rendered pre { overflow-x: auto; }
     #source { white-space: pre-wrap; font: 13px/1.45 ui-monospace, monospace; }
     .notice { padding: .8rem; border: 1px solid #8888; border-radius: .4rem; }
   </style>
