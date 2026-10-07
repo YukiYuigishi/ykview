@@ -2,6 +2,7 @@
 
 ## Current state
 
+- Issue 038で、現在のディレクトリ内の名前検索と複数種類のORフィルタを実装済み。
 - MVPのread-only SSHファイルプレビューは動作している。
 - local filesystem target（relative/absolute path）とremote home-relative target（`~` / relative path）を実装済み。
 - Phase 1–4（責務分割、target改善、context-aware system SSH、portable batch/on-demand directory listing cache）を実装済み。

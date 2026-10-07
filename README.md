@@ -21,6 +21,7 @@ SSH先またはlocal filesystemを、ローカルブラウザから閲覧・down
 - helperが使えない場合はPOSIX `sh`（macOS / BusyBoxを含む）のbatch listingへfallback
 - Windows SSHサーバーではPowerShellを使い、helper binaryなしで一覧・preview・転送を実行
 - ディレクトリ一覧とbreadcrumb navigation
+- 現在のディレクトリ内の名前検索と、複数種類を選べる種類フィルタ（併用可能。全選択・ZIPダウンロードは表示中の項目が対象）
 - HTML: そのままブラウザでpreview（通常のファイルリンクから直接表示）
 - Markdown: GitHub Flavored Markdown (GFM) preview
   - tables
@@ -214,6 +215,10 @@ uploadを有効にする場合:
 ```
 
 `-write`は既定で無効です。uploadは表示中のdirectoryを対象にし、通常fileの同名置換は一時fileからのatomic renameで行います。symbolic linkやdirectoryを上書きしません。既定ではupload全体の人工的なサイズ上限はなく、必要なら`-max-upload-size <bytes>`でupload request単位の上限を設定できます。ブラウザからのuploadは8 MiB chunkへ分割され、Pause後にResumeできます。
+
+ディレクトリ一覧の検索欄で名前の部分一致検索、「File type」で種類による絞り込みができます。名前検索は大文字・小文字を区別しません。種類を複数選ぶと「Markdownまたは画像」のように、選んだ種類のいずれかに一致する項目を表示します。名前検索も指定した場合は、名前の条件にも一致する項目が対象です。種類が未選択なら全種類を対象にします。
+
+検索対象は現在のディレクトリ内に限り、ディレクトリ名も絞り込みの対象です。「Clear」で条件を解除できます。絞り込みで隠れた項目の選択は解除され、全選択とZIPダウンロードは表示中の項目だけを対象とします。
 
 local filesystemを表示する場合:
 

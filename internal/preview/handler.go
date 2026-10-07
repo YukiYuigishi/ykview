@@ -108,45 +108,47 @@ func (h *handler) serveDirectory(w http.ResponseWriter, r *http.Request, rel, re
 	type viewEntry struct {
 		Name        string
 		Href        string
-		Icon        string
 		Kind        string
+		FilterKind  string
 		SelectPath  string
 		DownloadURL string
 	}
 	items := make([]viewEntry, 0, len(entries))
 	for _, entry := range entries {
 		href := pathURLJoin(r.URL.EscapedPath(), entry.Name)
-		icon := "📄"
-		kindLabel := "file"
+		kindLabel := "other file"
+		filterKind := "other-file"
 		if entry.Kind == "dir" {
 			href += "/"
-			icon = "📁"
 			kindLabel = "directory"
+			filterKind = "directory"
 		} else if isMarkdown(entry.Name) {
-			icon = "Ⓜ️"
 			kindLabel = "markdown"
+			filterKind = "markdown"
 		} else if isImage(entry.Name) {
-			icon = "🖼️"
 			kindLabel = "image"
+			filterKind = "image"
 		} else if isHTML(entry.Name) {
-			icon = "🌐"
 			kindLabel = "html"
+			filterKind = "html"
 		} else if isCSV(entry.Name) {
-			icon = "📊"
 			kindLabel = "CSV table"
+			filterKind = "csv"
 		} else if isTSV(entry.Name) {
-			icon = "📊"
 			kindLabel = "TSV table"
+			filterKind = "tsv"
 		} else if isJSONLines(entry.Name) {
 			kindLabel = "JSON lines"
+			filterKind = "json-lines"
 		} else if isAudio(entry.Name) {
-			icon = "🔊"
 			kindLabel = "audio"
+			filterKind = "audio"
 		} else if isVideo(entry.Name) {
-			icon = "🎞️"
 			kindLabel = "video"
+			filterKind = "video"
 		} else if isPlainText(entry.Name) {
 			kindLabel = "text"
+			filterKind = "text"
 		}
 		selectPath, pathErr := joinTransferRelativePath(rel, entry.Name)
 		if pathErr != nil {
@@ -157,13 +159,17 @@ func (h *handler) serveDirectory(w http.ResponseWriter, r *http.Request, rel, re
 		items = append(items, viewEntry{
 			Name:        entry.Name,
 			Href:        href,
-			Icon:        icon,
 			Kind:        kindLabel,
+			FilterKind:  filterKind,
 			SelectPath:  selectPath,
 			DownloadURL: downloadURL,
 		})
 	}
 
+	title := directoryTitle(rel)
+	if rel == "" {
+		title = "Files"
+	}
 	data := struct {
 		Title          string
 		Host           string
@@ -176,7 +182,7 @@ func (h *handler) serveDirectory(w http.ResponseWriter, r *http.Request, rel, re
 		ChunkUploadURL string
 		WriteEnabled   bool
 	}{
-		Title:          directoryTitle(rel),
+		Title:          title,
 		Host:           h.target.Host,
 		RemotePath:     remotePath,
 		Breadcrumb:     breadcrumbHTML(r.URL.EscapedPath(), true),
