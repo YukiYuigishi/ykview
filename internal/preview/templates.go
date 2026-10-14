@@ -483,11 +483,23 @@ var markdownTemplate = template.Must(template.New("markdown").Parse(`<!doctype h
   <title>{{.Name}} · {{.Host}}</title>
   <style>
     :root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
+    :root { --code-bg: #e9eff6; --code-border: #cbd5e1; --code-text: #1e293b; }
+    @media (prefers-color-scheme: dark) {
+      :root { --code-bg: #202b3b; --code-border: #3b4a60; --code-text: #e5edf7; }
+    }
     body { max-width: 1000px; margin: 0 auto; padding: 1rem; }
     nav { margin-bottom: 1rem; overflow-wrap: anywhere; }
     nav a { text-decoration: none; }
     .toolbar { display: flex; gap: .8rem; margin-bottom: 1rem; }
     #rendered, #source, #rendered pre { overflow-x: auto; }
+    #rendered pre:not(:has(code.language-mermaid)), #source {
+      box-sizing: border-box;
+      padding: 1rem 1.25rem;
+      border: 1px solid var(--code-border);
+      border-radius: .5rem;
+      background: var(--code-bg);
+      color: var(--code-text);
+    }
     #source { white-space: pre-wrap; font: 13px/1.45 ui-monospace, monospace; }
     .notice { padding: .8rem; border: 1px solid #8888; border-radius: .4rem; }
   </style>
