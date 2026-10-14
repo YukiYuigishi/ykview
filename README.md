@@ -139,7 +139,7 @@ Markdown renderer / Mermaid / syntax highlightのbrowser assetはykview binary�
 
 ## Build
 
-Go toolchainと静的解析ツールのversionは[`mise.toml`](mise.toml)と[`mise.analysis.toml`](mise.analysis.toml)で管理します。Go module dependencyはありません。通常のbuildと検証はMakefileから実行できます。初回は上記のmise setup後に次を実行してください。
+Go toolchainは[`mise.toml`](mise.toml)で1.27.2に固定し、通常環境とanalysis環境で共有します。静的解析ツールのversionは[`mise.analysis.toml`](mise.analysis.toml)で管理します。Go module dependencyはありません。通常のbuildと検証はMakefileから実行できます。初回は上記のmise setup後に次を実行してください。
 
 ```bash
 mise exec -- make build
@@ -176,7 +176,7 @@ mise exec -- make check          # test + race + vet + build（helper artifact�
 mise exec -- make clean          # bin/のMakefile生成物を削除
 ```
 
-静的解析ではanalysis環境のGo 1.26.1、deadcode、staticcheckを使います。
+analysis環境では共通のGo toolchainに加えて、deadcodeとstaticcheckを使います。
 
 ```bash
 mise -E analysis install
@@ -184,9 +184,11 @@ mise -E analysis exec -- deadcode ./...
 mise -E analysis exec -- staticcheck -tests=false ./...
 ```
 
+Go toolchain更新後、既存の解析ツールを新しいGoで再buildする場合は`mise -E analysis install --force`を実行します。新規installでは`--force`は不要です。
+
 ## CI / Release
 
-Pull requestとpushではGitHub ActionsがUbuntu上で通常環境とanalysis環境の両方で`go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`を実行します。通常環境ではserver OS selectionのテストとbuildも行い、analysis環境ではdeadcodeとstaticcheckを実行します。Windows runnerでは通常環境でWindows client/serverのテストとbuildを行います。
+Pull requestとpushではGitHub ActionsがUbuntu上のanalysis環境で`go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`を実行し、server OS selectionのテストとbuild、deadcode、staticcheckも実行します。Windows runnerでは通常環境でWindows client/serverのテストとbuildを行います。
 
 `v*` tagをpushすると、Linux/Darwinのamd64/arm64向けtar.gzとWindowsのamd64/arm64向けZIP、`SHA256SUMS`を含むGitHub Releaseを自動作成します。
 

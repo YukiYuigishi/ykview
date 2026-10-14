@@ -35,13 +35,9 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mise-env: ["", "analysis"]
     env:
       CGO_ENABLED: 1
-      MISE_ENV: ${{ matrix.mise-env }}
+      MISE_ENV: analysis
 
     steps:
       - name: Check out source
@@ -54,9 +50,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ matrix.mise-env || 'default' }}-build-${{ hashFiles('go.mod', 'go.sum', 'mise.toml', 'mise.analysis.toml') }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('go.mod', 'go.sum', 'mise.toml', 'mise.analysis.toml') }}
           restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.mise-env || 'default' }}-build-
+            ${{ runner.os }}-go-build-
 
       - name: Verify generated helper artifacts are committed
         run: git diff --exit-code -- internal/preview/remote_helpers
@@ -74,7 +70,6 @@ jobs:
         run: mise exec -- go build ./...
 
       - name: Test server OS selection
-        if: matrix.mise-env == ''
         run: |
           mise exec -- go test -tags server_linux ./...
           mise exec -- go test -tags server_darwin ./...
@@ -84,9 +79,7 @@ jobs:
           mise exec -- make build SERVER_OS=windows
 
       - name: Dead-code analysis
-        if: matrix.mise-env == 'analysis'
         run: mise exec -- deadcode ./...
 
       - name: Staticcheck
-        if: matrix.mise-env == 'analysis'
         run: mise exec -- staticcheck -tests=false ./...
