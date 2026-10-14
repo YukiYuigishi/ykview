@@ -2,6 +2,7 @@
 
 ## Current state
 
+- Issue 042で、READMEを日本語の概要・導入・使い方・開発手順に整理した。
 - Issue 041で、Markdownコードブロックに既存UIと同じ無彩色の背景と余白を追加した。ライト・ダークに追従する。
 - MVPのread-only SSHファイルプレビューは動作している。
 - local filesystem target（relative/absolute path）とremote home-relative target（`~` / relative path）を実装済み。

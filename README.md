@@ -1,182 +1,163 @@
 # ykview
 
-SSH先またはlocal filesystemを、ローカルブラウザから閲覧・downloadできるWebファイラーです。`-write`を明示した場合だけ、表示中のdirectoryへfile/directory uploadもできます。
+ykviewは、ローカルまたはSSH接続先のファイルをブラウザーで閲覧するWebファイラーです。ファイルの検索、プレビュー、ダウンロードに対応し、`-write`を指定するとアップロードもできます。
 
-リモート側にHTTPサーバや恒久的なagentを入れず、system `ssh` で必要な処理だけを実行します。directory batch listingでは、対応platform向けのGo helperをremote `TMPDIR`配下へversion/hash付きで配置し、次回以降も再利用します。
+SSH接続にはシステムの`ssh`を使います。接続先にGoやHTTPサーバー、常駐プロセスを用意する必要はありません。
 
-## Features
+## 主な機能
 
-- `host:/absolute/path` を指定してWebファイラーとして閲覧
-- `host` だけを指定すると、リモートのhome directoryを閲覧
-- `.`, `./relative/path`, `../relative/path`, `/absolute/path`を指定するとlocal filesystemを閲覧
-- system `ssh` を利用
-  - `~/.ssh/config`
-  - Host alias
-  - IdentityFile
-  - ProxyJump
-  - ssh-agent
-  - ControlMaster
-  などをそのまま利用
-- remote-side Go helper（Linux/darwinのamd64/arm64）でcurrentと直下directoryをbatch listing
-- helperが使えない場合はPOSIX `sh`（macOS / BusyBoxを含む）のbatch listingへfallback
-- Windows SSHサーバーではPowerShellを使い、helper binaryなしで一覧・preview・転送を実行
-- ディレクトリ一覧とbreadcrumb navigation
-- 現在のディレクトリ内の名前検索と、複数種類を選べる種類フィルタ（併用可能。全選択・ZIPダウンロードは表示中の項目が対象）
-- HTML: そのままブラウザでpreview（通常のファイルリンクから直接表示）
-- Markdown: GitHub Flavored Markdown (GFM) preview
-  - tables
-  - strikethrough
-  - task lists
-  - autolinks
-- ` ```mermaid ` fenced code blockをMermaidとして描画
-- PNG/JPEG/WebP/SVGなど: そのまま表示
-- MP3/WAV/OGG/M4A/FLAC: audio viewerで再生
-- MP4/WebM/MOV/OGV: video viewerで再生
-- Raw endpointはlocal/remoteでstream配信し、単一byte rangeとHEADに対応
-- CSV/TSV: table preview（表示上限あり、source表示へ切り替え可能）
-- JSON Lines（`.jsonl` / `.ndjson`）: JSON syntax highlight付きtext viewer
-- source code / JSON / YAML / textなど: browser内text viewer
-- 対応するsource codeは同梱のhighlight.jsでsyntax highlight
-- `Raw` 表示
-- ファイル単位のdownload、複数選択したfile/directoryのZIP download
-- `-write` opt-in時のfile picker / directory picker / drag & drop upload
-- chunk uploadによるPause / Resume（1 chunkは8 MiB）
-- local/remoteでのrelative path保持、atomic upload、symlink宛て書き込み拒否
-- directory listingのTTL cacheと同時アクセスの重複抑制
-- macOS / BusyBox互換のforeground batch listing
-- SSH command/connect timeoutとrequest context cancellation
-- media streamはrequest cancellationまで継続し、remote RangeはoffsetをSSH stdoutより前にremote側でskip
-- read-only（既定。uploadは`-write`指定時だけ有効）
+- ローカル・SSH接続先のディレクトリ閲覧
+- `~/.ssh/config`、Hostエイリアス、IdentityFile、ProxyJump、ssh-agentを使ったSSH接続
+- 現在のディレクトリ内でのファイル名検索と種類による絞り込み
+- Markdown、Mermaid、画像、音声、動画、CSV/TSV、JSON Lines、ソースコードなどのプレビュー
+- ファイル単位のダウンロードと、複数ファイル・ディレクトリのZIPダウンロード
+- `-write`を指定した場合のアップロードと一時停止・再開
 
-## Quick start (macOS Apple Silicon)
+## インストール
 
-開発用Goと静的解析ツールはmiseで管理します。[公式手順](https://mise.jdx.dev/getting-started.html)に従ってmise本体をinstallし、repository rootで設定ファイルを確認してから次を実行してください。GNU Makeとsystem OpenSSH client (`ssh`) も別途必要です。shell activationは不要です。
+### 公開バイナリ
+
+[最新のGitHub Release](https://github.com/yukiyuigishi/ykview/releases/latest)から、OSとCPUに合うアーカイブをダウンロードして展開します。macOS・Linux向けは`.tar.gz`、Windows向けは`.zip`です。アーカイブ名は`ykview-v0.1.0-darwin-arm64.tar.gz`の形式で、展開後の実行ファイルは`ykview`または`ykview.exe`です。
+
+macOS・Linux・Windowsの各`amd64`（x86-64）・`arm64`向けに公開しています。Apple Silicon搭載のMacでは`darwin-arm64`を選びます。SSH接続を使う場合は、OpenSSHクライアント（`ssh`）も必要です。
+
+展開先のディレクトリで、macOS・Linuxでは次を実行します。
 
 ```bash
+./ykview .
+```
+
+WindowsではPowerShellから起動します。
+
+```powershell
+.\ykview.exe .
+```
+
+実行ファイルをPATHの通ったディレクトリへ配置すると、以後は`ykview`または`ykview.exe`という名前で起動できます。
+
+### ソースからビルド
+
+Go 1.27.2をmiseで管理します。[mise](https://mise.jdx.dev/getting-started.html)とGNU Makeを用意し、次を実行します。
+
+```bash
+git clone https://github.com/yukiyuigishi/ykview.git
+cd ykview
 mise trust
 mise install
 mise exec -- make build
-./bin/ykview remote-host:/remote/path
+./bin/ykview .
 ```
 
-ユーザーのGo install先（通常は`~/go/bin`）へinstallする場合:
+GNU Makeを使わない場合は、miseのセットアップ後に`mise exec -- go build -o ykview ./cmd/ykview`でビルドできます。Windowsでは出力名を`ykview.exe`にしてください。
 
-```bash
-mise exec -- make install
-install_dir="$(mise exec -- go env GOBIN)"
-if [ -z "$install_dir" ]; then
-  install_dir="$(mise exec -- go env GOPATH)/bin"
-fi
-"$install_dir/ykview" remote-host:/remote/path
-```
-
-`GOBIN`を設定している場合は、そのdirectoryへinstallされます。実際の配置先は`mise exec -- go env GOBIN`または`mise exec -- go env GOPATH`で確認できます。
-
-## Quick start (Windows)
-
-Windows amd64/arm64のrelease ZIPを展開し、PowerShellから実行できます。SSH接続にはWindowsのOpenSSH client (`ssh.exe`) をPATHに用意してください。接続先はPOSIX shell (`sh`) が使えるLinux/macOSなどを想定しています。
-
-```powershell
-.\ykview.exe remote-host:/remote/path
-.\ykview.exe 'C:\Users\me\Documents'
-.\ykview.exe .\work
-```
-
-Goからbuildする場合は、repositoryのrootで `mise exec -- go build -o ykview.exe ./cmd/ykview` を実行します。Windows clientではSSH ControlMasterを使用せず、通常の`ssh.exe`接続を使います。
-
-WindowsをSSHサーバーとして使う場合は、サーバー側にOpenSSH ServerとWindows PowerShellが必要です。`remote-host`でユーザーのhomeを、`remote-host:C:/Users/me/Documents`でdrive absolute pathを指定できます。UNC pathは `remote-host:\\server\share\folder` と指定できます。`-write`指定時はWindows側へのuploadにも対応します。Windowsサーバーの初期SSH shellはcmd.exeで、PowerShellへ変更することもできます。どちらの設定でもPowerShellコマンドを起動します。Windowsサーバーでの`host:/path`形式は使えないため、絶対パスにはdriveまたはUNCのserver/shareを含めてください。Windowsサーバー上の一時的なhelper binaryは不要です。[Windows OpenSSH Serverのshell設定](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh-server-configuration)
-
-ブラウザで:
+## 使い方
 
 ```text
-http://127.0.0.1:8080/
+ykview [オプション] 対象
 ```
 
-## Example
+オプションは対象より前に指定します。起動すると既定のブラウザーを開き、URLを端末に表示します。終了するには端末で`Ctrl+C`を押します。
 
-```bash
-./ykview-darwin-arm64 remote-user@remote.example.com:/remote/path
-```
+以下の例は実行ファイルがPATH上にある場合です。PATHにない場合は、`./ykview`、`./bin/ykview`、Windowsでは`.\ykview.exe`のように実行ファイルへのパスを指定します。
 
-普段 `~/.ssh/config` にaliasを書いているなら、そのaliasをそのまま使えます。
+### 対象パス
 
-```sshconfig
-Host remote-host
-    HostName remote.example.com
-    User remote-user
-    ProxyJump bastion
-
-Host bastion
-    HostName bastion.example.com
-    User jump-user
-```
-
-```bash
-./ykview-darwin-arm64 remote-host:/remote/path
-```
-
-## Markdown / Mermaid
-
-Markdown viewerはブラウザ側で `marked` のGFM modeを使います。Mermaid blockはMermaidで描画します。
-
-````markdown
-# Architecture
-
-| component | role |
+| 対象 | 表示する場所 |
 | --- | --- |
-| browser | viewer |
-| SSH | transport |
+| `.`、`./path`、`../path`、`~/path`、`/absolute/path` | ローカルのディレクトリまたはファイル |
+| `C:\Users\me\Documents`、`\\server\share\path` | Windows上のローカルパス |
+| `host`、`host:~` | SSH接続先のホームディレクトリ |
+| `host:path`、`host:~/path` | SSH接続先のホームを基準にしたパス |
+| `host:/absolute/path` | POSIX環境のSSH接続先の絶対パス |
+| `host:C:/path` | Windows SSHサーバーのドライブ絶対パス |
+| `host:\\server\share\path` | Windows SSHサーバーのUNCパス |
 
-```mermaid
-flowchart LR
-    Browser --> LocalServer
-    LocalServer --> SSH
-    SSH --> RemoteFiles
-```
-````
-
-Markdown renderer / Mermaid / syntax highlightのbrowser assetはykview binaryへ同梱し、localhostから配信します。そのため、通常のpreview表示に外部インターネット接続は必要ありません。assetの読み込みやrich renderingに失敗した場合でもMarkdown sourceとtext sourceへfallbackします。assetのversionとlicenseは`THIRD_PARTY_NOTICES.md`に記録しています。
-
-## Build
-
-Go toolchainは[`mise.toml`](mise.toml)で1.27.2に固定し、通常環境とanalysis環境で共有します。静的解析ツールのversionは[`mise.analysis.toml`](mise.analysis.toml)で管理します。Go module dependencyはありません。通常のbuildと検証はMakefileから実行できます。初回は上記のmise setup後に次を実行してください。
+`Documents`のような名前だけの指定はSSH接続先として扱います。ローカルの相対パスには`./`または`../`を付けてください。ファイルを指定すると、その親ディレクトリを配信対象にして、指定したファイルを開きます。
 
 ```bash
-mise exec -- make build
-./bin/ykview remote-host:/remote/path
+ykview .
+ykview ./Documents
+ykview remote-host
+ykview remote-host:~/projects
+ykview remote-host:/var/log
 ```
 
-remote-side helperの埋め込みartifactはLinux/darwinのamd64/arm64向けに同梱しています。artifactを再生成する場合は次を実行します。
+Windows SSHサーバーにはOpenSSH ServerとPowerShell 5.1以降、POSIX環境の接続先には`sh`が必要です。Windowsの絶対パスにはドライブ名かUNCパスを指定します。
+
+Linux・macOSでは、ディレクトリ一覧の取得に使う補助実行ファイルを接続先の一時ディレクトリへ配置し、次回以降も再利用します。利用できない場合はシェルによる処理に切り替えます。
+
+### オプション
+
+| オプション | 既定値 | 説明 |
+| --- | --- | --- |
+| `-addr アドレス` | `127.0.0.1:8080` | HTTPの待受アドレス。空きポートを使う場合は`127.0.0.1:0`を指定 |
+| `-open` | 有効 | 起動時に既定のブラウザーを開く。無効にする場合は`-open=false` |
+| `-write` | 無効 | ファイルとディレクトリのアップロードを有効にする |
+| `-max-upload-size バイト数` | `0` | 1回のアップロード要求の最大サイズ。`0`は無制限 |
+| `-v` | 無効 | HTTP要求ごとのログを出力 |
+
+指定したポートが使用中の場合は、後続の空きポートを使います。実際のURLは端末の`open:`行で確認できます。
 
 ```bash
-mise exec -- make generate
+ykview -addr 127.0.0.1:0 remote-host:/var/log
+ykview -open=false -write remote-host:~/incoming
 ```
 
-通常の`make build`と`make check`は、tracked済みのhelper artifactをそのまま使い、`go generate`を自動実行しません。Go toolchainのversionやbuild環境によってhelper binaryが変わる可能性があるため、artifactの更新が必要なときだけ`make generate`を明示的に実行し、差分を確認してcommitします。
+環境変数`DEBUG=1`を設定すると、詳細なデバッグログを出力します。
 
-接続先のOSが決まっている場合は、`SERVER_OS`を指定して不要なremote helperをbinaryへ埋め込まずにbuildできます。`all`が既定です。Windowsサーバー向けbuildはLinux/Darwin helperを含みません。
+### プレビュー形式
+
+| 形式 | 表示方法 |
+| --- | --- |
+| Markdown | GitHub Flavored MarkdownとMermaidの図を描画 |
+| HTML、SVG | ブラウザーで直接表示 |
+| PNG、JPEG、WebPなど | 画像として表示 |
+| ソースコード、JSON、YAML、テキスト | 対応言語をシンタックスハイライト |
+| CSV、TSV | 表として表示。表示上限があり、ソース表示に切り替え可能 |
+| JSON Lines（`.jsonl`、`.ndjson`） | JSONのシンタックスハイライト付きで表示 |
+| MP3、WAV、OGG、M4A、FLAC | 音声プレーヤーで再生 |
+| MP4、WebM、MOV、OGV | 動画プレーヤーで再生 |
+
+音声・動画の再生可否はブラウザーの対応コーデックに依存します。再生できない場合は「Raw」または「Download」を使ってください。
+
+Markdown、Mermaid、シンタックスハイライトに必要なライブラリは実行ファイルに同梱しています。これらの読み込みに外部インターネット接続は不要です。
+
+### 検索とファイル転送
+
+名前検索と種類フィルターは、現在のディレクトリ内に適用します。全選択とZIPダウンロードは、絞り込み後に表示されている項目が対象です。
+
+アップロードは`-write`を指定した場合だけ有効になります。表示中のディレクトリに、ファイル選択やドラッグ＆ドロップでファイル・ディレクトリを送れます。同名の通常ファイルは置き換えますが、シンボリックリンクやディレクトリは上書きしません。
+
+ファイルは8 MiBずつに分けて全体を転送し、一時停止・再開に対応します。差分転送や、プロセス終了後の転送再開には対応していません。
+
+### 利用上の条件
+
+- 個人利用を想定しており、HTTPサーバーに認証機能はありません。既定ではループバックアドレスで待ち受けます。
+- HTMLとSVGは同一オリジン上で表示し、スクリプトを実行できます。信頼できるファイルだけを開いてください。
+- シンボリックリンクを辿り、指定したディレクトリの外にあるファイルを読み取れる場合があります。
+- ファイルの編集・名前変更・削除や、変更時の自動再読み込みには対応していません。
+- SSH URI形式とIPv6リテラルによる接続先指定には対応していません。
+
+## 開発
+
+Goのバージョンは[`mise.toml`](mise.toml)で1.27.2に固定しています。解析用ツールのdeadcode v0.52.0とstaticcheck v0.8.2は[`mise.analysis.toml`](mise.analysis.toml)で管理します。
+
+```bash
+mise exec -- make check
+```
+
+`make check`は`go test ./...`、`go test -race ./...`、`go vet ./...`、ビルドを実行します。接続先で使う補助実行ファイルは再生成しません。埋め込み用の実行ファイルを更新するときだけ、`mise exec -- make generate`を実行し、生成物の差分を確認してください。
+
+`mise exec -- make install`を実行すると、`ykview`を`GOBIN`（未設定なら`GOPATH/bin`）へ配置できます。
+
+接続先のOSを限定してビルドする場合は、`SERVER_OS`に`all`（既定）、`linux`、`darwin`、`windows`のいずれかを指定します。`all`以外では、指定したOS以外のSSHサーバーには接続できません。どの設定でもローカルのファイルを利用できます。
 
 ```bash
 mise exec -- make build SERVER_OS=linux
-mise exec -- make build SERVER_OS=darwin
 mise exec -- make build SERVER_OS=windows
 ```
 
-GNU Makeがない環境では、`mise exec -- go build -tags server_windows -o ykview.exe ./cmd/ykview` のように同じbuild tagを指定できます。`SERVER_OS`を制限したbinaryは指定OS以外のSSHサーバーを拒否します。local filesystem targetはどの設定でも使えます。
-
-主なdevelopment command:
-
-```bash
-mise exec -- make test           # go test ./...
-mise exec -- make test-race      # go test -race ./...
-mise exec -- make vet            # go vet ./...
-mise exec -- make build-helper   # standalone ykview-helperをbin/へbuild
-mise exec -- make install        # go install ./cmd/ykview（通常は~/go/bin）
-mise exec -- make check          # test + race + vet + build（helper artifactは再生成しない）
-mise exec -- make clean          # bin/のMakefile生成物を削除
-```
-
-analysis環境では共通のGo toolchainに加えて、deadcodeとstaticcheckを使います。
+静的解析はmiseの`analysis`環境で実行します。
 
 ```bash
 mise -E analysis install
@@ -184,152 +165,24 @@ mise -E analysis exec -- deadcode ./...
 mise -E analysis exec -- staticcheck -tests=false ./...
 ```
 
-Go toolchain更新後、既存の解析ツールを新しいGoで再buildする場合は`mise -E analysis install --force`を実行します。新規installでは`--force`は不要です。
+Goのバージョンを更新したあとに解析ツールを再インストールする場合は、`mise -E analysis install --force`を実行します。
 
-## CI / Release
+## CIとリリース
 
-Pull requestとpushではGitHub ActionsがUbuntu上のanalysis環境で`go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`を実行し、server OS selectionのテストとbuild、deadcode、staticcheckも実行します。Windows runnerでは通常環境でWindows client/serverのテストとbuildを行います。
+[CI](.github/workflows/ci.yml)では、pushとプルリクエストに対してテスト、データ競合の検査、`go vet`、ビルド、静的解析を実行します。Windowsクライアント・サーバーのテストとビルドも行います。
 
-`v*` tagをpushすると、Linux/Darwinのamd64/arm64向けtar.gzとWindowsのamd64/arm64向けZIP、`SHA256SUMS`を含むGitHub Releaseを自動作成します。
+`v*`タグをpushすると、[リリースワークフロー](.github/workflows/release.yml)が6プラットフォーム向けのアーカイブと`SHA256SUMS`をGitHub Releaseへ公開します。
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-Release archiveをlocalで作成する場合:
+アーカイブをローカルで作る場合は次を実行します。
 
 ```bash
-mise exec -- make generate
 mise exec -- scripts/package-release.sh v0.1.0 dist
 ```
 
-## Project layout
+## コントリビューション
 
-- `cmd/ykview`: CLI entrypoint only
-- `cmd/ykview-helper`: remote-side filesystem helper entrypoint
-- `internal/preview`: target parsing、SSH transport、directory cache、HTTP handler、templateとそのtests
-- `internal/preview/assets.go`: 同梱browser assetのembedとlocalhost配信
-- `internal/preview/assets`: marked、Mermaid、highlight.js/CSSのversion固定asset
-- `internal/remotehelper`: helperのfilesystem traversalとbatch protocol writer
-- `scripts/generate-remote-helpers.sh`: helper artifactのcross buildと圧縮
-- `scripts/package-release.sh`: Linux/Darwin/Windows向けrelease archiveの作成
-- `mise.toml`, `mise.analysis.toml`: Go toolchainと静的解析ツールのversion設定
-- `Makefile`: build、test、verification command
-- `.github/workflows/ci.yml`: pull request / push時のCI
-- `.github/workflows/release.yml`: `v*` tag push時のGitHub Release
-- `THIRD_PARTY_NOTICES.md`: 同梱browser assetのversionとlicense
-- `issues/`: 実装scopeと検証結果
+不具合の報告や機能の提案は[GitHub Issues](https://github.com/yukiyuigishi/ykview/issues)へお願いします。不具合の報告には、利用OS、実行したコマンド、再現手順を添えてください。コードを変更した場合は、`mise exec -- make check`で確認してからプルリクエストを作成してください。
 
-## Usage
+## ライセンス
 
-```bash
-./bin/ykview [options] target
-```
-
-uploadを有効にする場合:
-
-```bash
-./bin/ykview -write remote-host:/remote/path
-```
-
-`-write`は既定で無効です。uploadは表示中のdirectoryを対象にし、通常fileの同名置換は一時fileからのatomic renameで行います。symbolic linkやdirectoryを上書きしません。既定ではupload全体の人工的なサイズ上限はなく、必要なら`-max-upload-size <bytes>`でupload request単位の上限を設定できます。ブラウザからのuploadは8 MiB chunkへ分割され、Pause後にResumeできます。
-
-ディレクトリ一覧の検索欄で名前の部分一致検索、「File type」で種類による絞り込みができます。名前検索は大文字・小文字を区別しません。種類を複数選ぶと「Markdownまたは画像」のように、選んだ種類のいずれかに一致する項目を表示します。名前検索も指定した場合は、名前の条件にも一致する項目が対象です。種類が未選択なら全種類を対象にします。
-
-検索対象は現在のディレクトリ内に限り、ディレクトリ名も絞り込みの対象です。「Clear」で条件を解除できます。絞り込みで隠れた項目の選択は解除され、全選択とZIPダウンロードは表示中の項目だけを対象とします。
-
-local filesystemを表示する場合:
-
-```bash
-./bin/ykview .
-./bin/ykview ./subdir
-./bin/ykview /absolute/path
-```
-
-リモートhomeを開く場合はhostだけを指定できます。
-
-```bash
-./bin/ykview remote-host
-```
-
-リモートのhome基準のpathも指定できます。
-
-```bash
-./bin/ykview remote-host:~/projects
-./bin/ykview remote-host:projects
-```
-
-ブラウザはデフォルトで自動的に開きます。自動起動を無効にする場合:
-
-```bash
-./bin/ykview -open=false remote-host:/remote/path
-```
-
-listen address変更:
-
-```bash
-./bin/ykview -addr 127.0.0.1:7391 remote-host:/remote/path
-```
-
-指定portが使用中の場合は、同じhostの後続portへ自動的にずらしてlistenします。空いているportを使う場合は`-addr :0`を指定できます。実際にlistenしたURLが`open: http://.../`形式の通常出力として表示されます。diagnostic logはstderrへ出力されます。
-
-request log:
-
-```bash
-./bin/ykview -v remote-host:/remote/path
-```
-
-debug log:
-
-```bash
-DEBUG=1 ./bin/ykview -addr 127.0.0.1:7391 remote-host:/remote/path
-```
-
-debug logは標準ライブラリの`log/slog`によるkey-value形式で、HTTP request、cache hit/miss、batch listingのfallback、SSH commandの`operation`・`remote_path`・`duration`・`bytes`を出力します。`DEBUG`未設定時はdebug levelのログを出力しません。`-v`は通常のrequest logを有効にします。
-
-## How it works
-
-ブラウザから要求が来ると、ローカル側の `ykview` がsystem `ssh` を呼びます。同一process内では専用のOpenSSH ControlMasterを自動的に使い、helper probe、listing、file readでSSH transport connectionを再利用します。directory listingはcache miss時にforegroundで取得し、対応platformではremote `TMPDIR`に残したGo helperがcurrentと最大16個の直下directoryのlistingを1回で取得します。helper cacheがなければatomicにuploadし、同じhelper binaryが残っていればbinary転送を省略します。helperを利用できない場合はportable shell batchへ、さらに失敗した場合はsingle-directory listingへfallbackします。同じdirectoryへの同時アクセスは1回のSSH listingにまとめます。background prefetchは行いません。ファイル内容はcacheしません。
-
-helperは最初のbatch listing時にremote platform判定を行います。cache miss時だけbinary uploadが発生するため、ProxyJumpや高RTTの環境でも同じhelper binaryを使う次回起動では転送コストを抑えられます。cache filenameにはcache version、platform、展開後binaryのSHA-256を含めます。cache miss時のuploadはSSH channel compressionを使い、remote側にgzip commandを要求しません。helper実行に失敗した場合は該当cacheを削除してshell batchへfallbackします。
-
-```text
-Browser
-   |
-   | HTTP localhost
-   v
-ykview
-   |
-   | system ssh
-   | (~/.ssh/config / ProxyJump / agent ...)
-   v
-versioned helper cache or POSIX shell
-   |
-Remote filesystem
-```
-
-リモートにはHTTP serverや恒久的daemonを起動しません。helper自体はSSH commandから起動する短命processですが、helper binaryは次回起動で再利用するためremote `TMPDIR`に残ります。stale cacheの自動GCはまだ行いません。
-
-## Limitations
-
-- cacheされていないremote accessではSSH processを起動する
-- directory listingはGo helperまたはportable remote shellを使う
-- directory listing cacheの既定TTLは10秒、最大256エントリ
-- batch listingのprotocolはtab/newlineを含むfilenameを保持する。single-directory shell fallbackではnewlineを含むfilenameを完全には扱えない
-- media codecの再生可否はbrowserに依存する。再生できない場合はviewer内のRawまたはDownloadを使う
-- live reload未対応
-- file edit / rename / deleteは未対応
-- rsyncのremote依存やdelta block転送は行わず、uploadは必要に応じてfull-file transferへfallbackする
-- Resume用の一時staging fileはykview processのlocal temporary directoryに置かれ、process終了後のsession復元は未対応
-- HTML/SVGはread-only用途の同一origin上で直接表示するため、信頼できるremote fileだけを開く
-- Markdown / Mermaid / syntax highlightのbrowser assetを同梱するため、binary sizeが増える
-- SSH URI形式やIPv6 literalのtarget parserは未対応
-- WindowsサーバーではPowerShell 5.1以降が必要。drive absolute path、UNC path、home-relative pathに対応
-- helper cacheがない場合はplatform判定とbinary uploadが発生するため、高RTTやProxyJump環境では初回表示が遅くなる場合がある。cache hit時はbinary uploadを行わない
-- remote helper cacheのstale entryは自動GCしない
-- process-local ControlMasterは終了時に閉じるため、別の`remote-preview` processとのconnection共有は行わない。ControlMaster setupに失敗した場合は通常の独立SSHへfallbackする
-
-## License
-
-このproject本体はMIT Licenseです。詳細は[`LICENSE`](LICENSE)を参照してください。bundled browser assetの個別licenseは[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)に記載しています。
+ykview本体は[MIT License](LICENSE)です。同梱ライブラリのライセンスは[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)を参照してください。
