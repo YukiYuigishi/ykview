@@ -9,6 +9,10 @@ coverage.out
 # Local Codex configuration
 /.codex/
 
+# Local mise overrides
+/mise.local.toml
+/mise.*.local.toml
+
 # OS and editor files
 .DS_Store
 Thumbs.db

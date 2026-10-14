@@ -18,78 +18,75 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23.x'
+      - name: Set up mise
+        uses: jdx/mise-action@v5
 
       - name: Test Windows client paths and transfer
-        run: go test ./... -run '^TestWindows' -count=1
+        run: mise exec -- go test ./... -run '^TestWindows' -count=1
 
       - name: Test Windows server build
-        run: go test -tags server_windows ./... -run '^TestWindows' -count=1
+        run: mise exec -- go test -tags server_windows ./... -run '^TestWindows' -count=1
 
       - name: Build Windows CLI
-        run: go build ./...
+        run: mise exec -- go build ./...
 
       - name: Build Windows-server-only CLI
-        run: go build -tags server_windows ./...
+        run: mise exec -- go build -tags server_windows ./...
 
   verify:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.23.x", "1.26.x"]
+        mise-env: ["", "analysis"]
     env:
       CGO_ENABLED: 1
+      MISE_ENV: ${{ matrix.mise-env }}
 
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
+      - name: Set up mise
+        uses: jdx/mise-action@v5
 
       - name: Cache Go build artifacts
         uses: actions/cache@v4
         with:
           path: ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ matrix.go-version }}-build-${{ hashFiles('go.mod', 'go.sum') }}
+          key: ${{ runner.os }}-go-${{ matrix.mise-env || 'default' }}-build-${{ hashFiles('go.mod', 'go.sum', 'mise.toml', 'mise.analysis.toml') }}
           restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go-version }}-build-
+            ${{ runner.os }}-go-${{ matrix.mise-env || 'default' }}-build-
 
       - name: Verify generated helper artifacts are committed
         run: git diff --exit-code -- internal/preview/remote_helpers
 
       - name: Test
-        run: go test ./...
+        run: mise exec -- go test ./...
 
       - name: Test with race detector
-        run: go test -race ./...
+        run: mise exec -- go test -race ./...
 
       - name: Vet
-        run: go vet ./...
+        run: mise exec -- go vet ./...
 
       - name: Build
-        run: go build ./...
+        run: mise exec -- go build ./...
 
       - name: Test server OS selection
-        if: matrix.go-version == '1.23.x'
+        if: matrix.mise-env == ''
         run: |
-          go test -tags server_linux ./...
-          go test -tags server_darwin ./...
-          go test -tags server_windows ./...
-          make build SERVER_OS=linux
-          make build SERVER_OS=darwin
-          make build SERVER_OS=windows
+          mise exec -- go test -tags server_linux ./...
+          mise exec -- go test -tags server_darwin ./...
+          mise exec -- go test -tags server_windows ./...
+          mise exec -- make build SERVER_OS=linux
+          mise exec -- make build SERVER_OS=darwin
+          mise exec -- make build SERVER_OS=windows
 
       - name: Dead-code analysis
-        if: matrix.go-version == '1.26.x'
-        run: go run golang.org/x/tools/cmd/deadcode@v0.50.0 ./...
+        if: matrix.mise-env == 'analysis'
+        run: mise exec -- deadcode ./...
 
       - name: Staticcheck
-        if: matrix.go-version == '1.26.x'
-        run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.1 -tests=false ./...
+        if: matrix.mise-env == 'analysis'
+        run: mise exec -- staticcheck -tests=false ./...

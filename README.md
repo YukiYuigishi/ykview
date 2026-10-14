@@ -50,19 +50,27 @@ SSH先またはlocal filesystemを、ローカルブラウザから閲覧・down
 
 ## Quick start (macOS Apple Silicon)
 
+開発用Goと静的解析ツールはmiseで管理します。[公式手順](https://mise.jdx.dev/getting-started.html)に従ってmise本体をinstallし、repository rootで設定ファイルを確認してから次を実行してください。GNU Makeとsystem OpenSSH client (`ssh`) も別途必要です。shell activationは不要です。
+
 ```bash
-make build
+mise trust
+mise install
+mise exec -- make build
 ./bin/ykview remote-host:/remote/path
 ```
 
 ユーザーのGo install先（通常は`~/go/bin`）へinstallする場合:
 
 ```bash
-make install
-"$(go env GOPATH)/bin/ykview" remote-host:/remote/path
+mise exec -- make install
+install_dir="$(mise exec -- go env GOBIN)"
+if [ -z "$install_dir" ]; then
+  install_dir="$(mise exec -- go env GOPATH)/bin"
+fi
+"$install_dir/ykview" remote-host:/remote/path
 ```
 
-`GOBIN`を設定している場合は、Go toolchainの設定に従ってそのdirectoryへinstallされます。実際の配置先は`go env GOBIN`または`go env GOPATH`で確認できます。
+`GOBIN`を設定している場合は、そのdirectoryへinstallされます。実際の配置先は`mise exec -- go env GOBIN`または`mise exec -- go env GOPATH`で確認できます。
 
 ## Quick start (Windows)
 
@@ -74,7 +82,7 @@ Windows amd64/arm64のrelease ZIPを展開し、PowerShellから実行できま�
 .\ykview.exe .\work
 ```
 
-Goからbuildする場合は、repositoryのrootで `go build -o ykview.exe ./cmd/ykview` を実行します。Windows clientではSSH ControlMasterを使用せず、通常の`ssh.exe`接続を使います。
+Goからbuildする場合は、repositoryのrootで `mise exec -- go build -o ykview.exe ./cmd/ykview` を実行します。Windows clientではSSH ControlMasterを使用せず、通常の`ssh.exe`接続を使います。
 
 WindowsをSSHサーバーとして使う場合は、サーバー側にOpenSSH ServerとWindows PowerShellが必要です。`remote-host`でユーザーのhomeを、`remote-host:C:/Users/me/Documents`でdrive absolute pathを指定できます。UNC pathは `remote-host:\\server\share\folder` と指定できます。`-write`指定時はWindows側へのuploadにも対応します。Windowsサーバーの初期SSH shellはcmd.exeで、PowerShellへ変更することもできます。どちらの設定でもPowerShellコマンドを起動します。Windowsサーバーでの`host:/path`形式は使えないため、絶対パスにはdriveまたはUNCのserver/shareを含めてください。Windowsサーバー上の一時的なhelper binaryは不要です。[Windows OpenSSH Serverのshell設定](https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh-server-configuration)
 
@@ -131,17 +139,17 @@ Markdown renderer / Mermaid / syntax highlightのbrowser assetはykview binary�
 
 ## Build
 
-Go 1.23+のみ必要です。Go module dependencyはありません。通常のbuildと検証はMakefileから実行できます。
+Go toolchainと静的解析ツールのversionは[`mise.toml`](mise.toml)と[`mise.analysis.toml`](mise.analysis.toml)で管理します。Go module dependencyはありません。通常のbuildと検証はMakefileから実行できます。初回は上記のmise setup後に次を実行してください。
 
 ```bash
-make build
+mise exec -- make build
 ./bin/ykview remote-host:/remote/path
 ```
 
 remote-side helperの埋め込みartifactはLinux/darwinのamd64/arm64向けに同梱しています。artifactを再生成する場合は次を実行します。
 
 ```bash
-make generate
+mise exec -- make generate
 ```
 
 通常の`make build`と`make check`は、tracked済みのhelper artifactをそのまま使い、`go generate`を自動実行しません。Go toolchainのversionやbuild環境によってhelper binaryが変わる可能性があるため、artifactの更新が必要なときだけ`make generate`を明示的に実行し、差分を確認してcommitします。
@@ -149,28 +157,36 @@ make generate
 接続先のOSが決まっている場合は、`SERVER_OS`を指定して不要なremote helperをbinaryへ埋め込まずにbuildできます。`all`が既定です。Windowsサーバー向けbuildはLinux/Darwin helperを含みません。
 
 ```bash
-make build SERVER_OS=linux
-make build SERVER_OS=darwin
-make build SERVER_OS=windows
+mise exec -- make build SERVER_OS=linux
+mise exec -- make build SERVER_OS=darwin
+mise exec -- make build SERVER_OS=windows
 ```
 
-GNU Makeがない環境では、`go build -tags server_windows -o ykview.exe ./cmd/ykview` のように同じbuild tagを指定できます。`SERVER_OS`を制限したbinaryは指定OS以外のSSHサーバーを拒否します。local filesystem targetはどの設定でも使えます。
+GNU Makeがない環境では、`mise exec -- go build -tags server_windows -o ykview.exe ./cmd/ykview` のように同じbuild tagを指定できます。`SERVER_OS`を制限したbinaryは指定OS以外のSSHサーバーを拒否します。local filesystem targetはどの設定でも使えます。
 
 主なdevelopment command:
 
 ```bash
-make test       # go test ./...
-make test-race  # go test -race ./...
-make vet        # go vet ./...
-make build-helper # standalone ykview-helperをbin/へbuild
-make install    # go install ./cmd/ykview（通常は~/go/bin）
-make check      # test + race + vet + build（helper artifactは再生成しない）
-make clean      # bin/のMakefile生成物を削除
+mise exec -- make test           # go test ./...
+mise exec -- make test-race      # go test -race ./...
+mise exec -- make vet            # go vet ./...
+mise exec -- make build-helper   # standalone ykview-helperをbin/へbuild
+mise exec -- make install        # go install ./cmd/ykview（通常は~/go/bin）
+mise exec -- make check          # test + race + vet + build（helper artifactは再生成しない）
+mise exec -- make clean          # bin/のMakefile生成物を削除
+```
+
+静的解析ではanalysis環境のGo 1.26.1、deadcode、staticcheckを使います。
+
+```bash
+mise -E analysis install
+mise -E analysis exec -- deadcode ./...
+mise -E analysis exec -- staticcheck -tests=false ./...
 ```
 
 ## CI / Release
 
-Pull requestとpushではGitHub Actionsが`make check`を実行します。
+Pull requestとpushではGitHub ActionsがUbuntu上で通常環境とanalysis環境の両方で`go test ./...`、`go test -race ./...`、`go vet ./...`、`go build ./...`を実行します。通常環境ではserver OS selectionのテストとbuildも行い、analysis環境ではdeadcodeとstaticcheckを実行します。Windows runnerでは通常環境でWindows client/serverのテストとbuildを行います。
 
 `v*` tagをpushすると、Linux/Darwinのamd64/arm64向けtar.gzとWindowsのamd64/arm64向けZIP、`SHA256SUMS`を含むGitHub Releaseを自動作成します。
 
@@ -182,8 +198,8 @@ git push origin v0.1.0
 Release archiveをlocalで作成する場合:
 
 ```bash
-make generate
-scripts/package-release.sh v0.1.0 dist
+mise exec -- make generate
+mise exec -- scripts/package-release.sh v0.1.0 dist
 ```
 
 ## Project layout
@@ -196,6 +212,7 @@ scripts/package-release.sh v0.1.0 dist
 - `internal/remotehelper`: helperのfilesystem traversalとbatch protocol writer
 - `scripts/generate-remote-helpers.sh`: helper artifactのcross buildと圧縮
 - `scripts/package-release.sh`: Linux/Darwin/Windows向けrelease archiveの作成
+- `mise.toml`, `mise.analysis.toml`: Go toolchainと静的解析ツールのversion設定
 - `Makefile`: build、test、verification command
 - `.github/workflows/ci.yml`: pull request / push時のCI
 - `.github/workflows/release.yml`: `v*` tag push時のGitHub Release
