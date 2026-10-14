@@ -2,7 +2,7 @@
 
 ## Current state
 
-- Issue 041で、Markdownコードブロックにライト・ダーク対応の背景色と余白を追加した。
+- Issue 041で、Markdownコードブロックに既存UIと同じ無彩色の背景と余白を追加した。ライト・ダークに追従する。
 - MVPのread-only SSHファイルプレビューは動作している。
 - local filesystem target（relative/absolute path）とremote home-relative target（`~` / relative path）を実装済み。
 - Phase 1–4（責務分割、target改善、context-aware system SSH、portable batch/on-demand directory listing cache）を実装済み。

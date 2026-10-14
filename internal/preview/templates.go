@@ -482,10 +482,12 @@ var markdownTemplate = template.Must(template.New("markdown").Parse(`<!doctype h
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Name}} · {{.Host}}</title>
   <style>
-    :root { color-scheme: light dark; font: 16px/1.5 system-ui, sans-serif; }
-    :root { --code-bg: #e9eff6; --code-border: #cbd5e1; --code-text: #1e293b; }
-    @media (prefers-color-scheme: dark) {
-      :root { --code-bg: #202b3b; --code-border: #3b4a60; --code-text: #e5edf7; }
+    :root {
+      color-scheme: light dark;
+      font: 16px/1.5 system-ui, sans-serif;
+      --code-bg: color-mix(in srgb, CanvasText 7%, Canvas);
+      --code-border: #8885;
+      --code-text: CanvasText;
     }
     body { max-width: 1000px; margin: 0 auto; padding: 1rem; }
     nav { margin-bottom: 1rem; overflow-wrap: anywhere; }
