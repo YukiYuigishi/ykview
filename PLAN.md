@@ -3,7 +3,7 @@
 ## Current state
 
 - Issue 043で、Go module pathを`github.com/YukiYuigishi/ykview`へ変更し、READMEに`go install`の導入手順を追加した。公開先の`@latest`への反映には、この変更を含むversionの公開が必要。
-- Issue 042で、READMEを日本語の概要・導入・使い方・開発手順に整理した。
+- READMEは概要・導入・基本操作・利用上の注意・開発手順に絞った（Issue 044）。
 - Issue 041で、Markdownコードブロックに既存UIと同じ無彩色の背景と余白を追加した。ライト・ダークに追従する。
 - MVPのread-only SSHファイルプレビューは動作している。
 - local filesystem target（relative/absolute path）とremote home-relative target（`~` / relative path）を実装済み。
