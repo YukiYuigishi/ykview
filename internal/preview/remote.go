@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"ykview/internal/remotehelper"
+	"github.com/YukiYuigishi/ykview/internal/remotehelper"
 )
 
 type remoteEntry struct {

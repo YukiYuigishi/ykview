@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"ykview/internal/preview"
+	"github.com/YukiYuigishi/ykview/internal/preview"
 )
 
 func main() {

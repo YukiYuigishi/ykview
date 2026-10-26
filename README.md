@@ -15,6 +15,17 @@ SSH接続にはシステムの`ssh`を使います。接続先にGoやHTTPサー
 
 ## インストール
 
+### go install
+
+Go 1.23以降があれば、次のコマンドでインストールできます。
+
+```bash
+go install github.com/YukiYuigishi/ykview/cmd/ykview@latest
+ykview .
+```
+
+インストール先は`GOBIN`（未設定なら`GOPATH/bin`、通常は`~/go/bin`）です。このディレクトリをPATHへ追加してください。
+
 ### 公開バイナリ
 
 [最新のGitHub Release](https://github.com/yukiyuigishi/ykview/releases/latest)から、OSとCPUに合うアーカイブをダウンロードして展開します。macOS・Linux向けは`.tar.gz`、Windows向けは`.zip`です。アーカイブ名は`ykview-v0.1.0-darwin-arm64.tar.gz`の形式で、展開後の実行ファイルは`ykview`または`ykview.exe`です。
