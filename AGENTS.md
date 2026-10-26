@@ -12,10 +12,11 @@
 作業開始時に`PLAN.md`を確認する。
 
 * `PLAN.md`: project全体の現在地、優先順位、依存関係
-* `issues/`: 個別作業のscope、acceptance criteria、進捗、検証結果
+* `issues/`: 個別作業のscope、acceptance criteria、進捗
 * Git history / diff: 実際に行われた変更
 
 会話履歴をproject stateのsource of truthとして扱わない。
+ユーザーの環境や検証に使ったサーバーの名前などの非公開情報をドキュメントに記載しない。
 
 重要な状態、判断、残作業はrepository内へ記録する。
 
